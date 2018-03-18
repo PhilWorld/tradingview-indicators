@@ -1,0 +1,227 @@
+//@version=3
+
+// BTC WORLD PRICE (AVERAGE)
+//  Multi-exchange volume-weighted average price
+//  Release: 2018-03-16
+//  Author: Phil Ledru
+//  Email: mail@phil.world
+//  GitHub: https://github.com/PhilWorld/tradingview-indicators
+
+// PURPOSE
+//  Quotes BTC price and volume from 7 exchanges, and returns weighted averages.
+//  Includes USD, EUR, JPY, KRW and USDT sources.
+
+// FEATURES
+//  - Display Candles (regular) or Heikin-Ashi (averaged).
+//  - OHLC price available for other indicators.
+
+// EXCHANGES (Total: >30% of reported volume on CoinMarketCap, 2018-03-11)
+//
+//  Rank Exchange   Volume %   TV TICKER         Start Date   Currency
+//  00   Bitmex     (~50%)     BITMEX:XBTUSD     2017-01-01   USD Contracts (note: volume in USD, others in BTC)
+//  01   Bitfinex     10.75%   BITFINEX:BTCUSD   2013-03-31   USD
+//  02   Binance       6.40%   BINANCE:BTCUSDT   2017-08-17   USDT
+//  03   bitFlyer      3.55%   BITFLYER:BTCJPY   2015-06-24   JPY
+//  04   Bithumb       3.26%   BITHUMB:BTCKRW    2013-12-27   KRW
+//  05   Coinbase      3.00%   COINBASE:BTCUSD   2014-12-01   USD
+//  08   Kraken        1.97%   KRAKEN:BTCEUR     2013-09-10   EUR (included for EUR quote)
+
+// Unfortunately we cannot work with these, because Pine Script is limited to 40 security calls.
+// Here for reference and quick edits.
+//  06   Bitstamp      2.84%   BITSTAMP:BTCUSD                USD
+//  07   Kraken        2.09%   KRAKEN:BTCUSD                  USD
+//  09   HitBTC        0.87%   HITBTC:BTCUSDT                 USDT
+//  10   Bittrex       0.70%   BITTREX:BTCUSDT                USDT
+//  11   Bitfinex      0.60%   BITFINEX:BTCEUR                EUR
+//  12   Poloniex      0.59%   POLONIEX:BTCUSDT               USDT
+//  13   Bitstamp      0.55%   BITSTAMP:BTCEUR                EUR
+//  14   Coinbase      0.51%   COINBASE:BTCEUR                EUR
+//  15   CEX.io        0.36%   CEXIO:BTCUSD                   USD
+//  16   Korbit        0.34%   KORBIT:BTCKRW                  KRW
+
+// INDICATOR PARAMETERS
+sTitle      = "BTC World Real-time Price Average"
+sShort      = "BTC World"
+sRelease    = "2018-03-16"
+sOverlay    = true
+sScale      = scale.right
+sPrecision  = 6     
+// Precision 0 is fine for BTCUSD, but 6 is better for FOREX calls (e.g. JPYUSD).
+// Change Decimals Places to 1/1 in "Scale Properties" > "Scale" to clean the Right/Left Axis.
+
+study(title=sTitle+" [v"+sRelease+"]", shorttitle=sShort, overlay=sOverlay, scale=sScale, precision=sPrecision)
+
+
+// _______________________
+// ________ INPUT ________
+
+// TradingView Symbol Ticker and short name (sorted by volume order)
+// Symbols are denominated "sym0, sym1... symN"
+sym0Title = "Bitmex (Contracts)"
+sym1Title = "Bitfinex (USD)"
+sym2Title = "Binance (USDT)"
+sym3Title = "bitFlyer (JPY)"
+sym4Title = "Bithumb (KRW)"
+sym5Title = "Coinbase (USD)"
+sym6Title = "Kraken (EUR)"
+
+// Chart Type: Candlesticks (default) or Heikin Ashi (average)
+chartType = input(title="Chart Style", type=string, options=["Candles", "Heikin Ashi"], defval="Candles")
+
+// User-selection of which symbols to use (default: all)
+sym0 = input(title=sym0Title, type=bool, defval=true)
+sym1 = input(title=sym1Title, type=bool, defval=true)
+sym2 = input(title=sym2Title, type=bool, defval=true)
+sym3 = input(title=sym3Title, type=bool, defval=true)
+sym4 = input(title=sym4Title, type=bool, defval=true)
+sym5 = input(title=sym5Title, type=bool, defval=true)
+sym6 = input(title=sym6Title, type=bool, defval=true)
+
+
+// _______________________
+// ________ QUOTE ________
+
+// retrieve FOREX currency values in USD
+USD     = 1
+usdtUSD = security("USDTUSD", period, close)
+jpyUSD  = security("JPYUSD" , period, close)
+krwUSD  = security("KRWUSD" , period, close)
+eurUSD  = security("EURUSD" , period, close)
+
+// if Heikin Ashi, request Heikin-Ashi data using the special ticker identifier, otherwise normal ticker
+sym0Ticker = iff(chartType == "Heikin Ashi" , heikinashi("BITMEX:XBTUSD"  ) , "BITMEX:XBTUSD"   )
+sym1Ticker = iff(chartType == "Heikin Ashi" , heikinashi("BITFINEX:BTCUSD") , "BITFINEX:BTCUSD" )
+sym2Ticker = iff(chartType == "Heikin Ashi" , heikinashi("BINANCE:BTCUSDT") , "BINANCE:BTCUSDT" )
+sym3Ticker = iff(chartType == "Heikin Ashi" , heikinashi("BITFLYER:BTCJPY") , "BITFLYER:BTCJPY" )
+sym4Ticker = iff(chartType == "Heikin Ashi" , heikinashi("BITHUMB:BTCKRW" ) , "BITHUMB:BTCKRW"  )
+sym5Ticker = iff(chartType == "Heikin Ashi" , heikinashi("COINBASE:BTCUSD") , "COINBASE:BTCUSD" )
+sym6Ticker = iff(chartType == "Heikin Ashi" , heikinashi("KRAKEN:BTCEUR"  ) , "KRAKEN:BTCEUR"   )
+
+// Retrieve OHLCV values for each symbol. 
+// General function: 
+// - returns 0 if symbol unchecked by user;
+// - converts price to USD using FOREX currency value.
+quote(currency, sym, tick, src) => sym ? currency * security(tick, period, src) : 0
+
+// BITMEX:XBTUSD
+sym0Open   = quote(USD, sym0, sym0Ticker, open)
+sym0Close  = quote(USD, sym0, sym0Ticker, close)
+sym0High   = quote(USD, sym0, sym0Ticker, high)
+sym0Low    = quote(USD, sym0, sym0Ticker, low)
+sym0VolUSD = quote(USD, sym0, sym0Ticker, volume) // this is USD, convert to BTC below
+sym0Volume = sym0 ? sym0VolUSD / sym0Close : 0
+
+// BITFINEX:BTCUSD
+sym1Open   = quote(USD, sym1, sym1Ticker, open)
+sym1Close  = quote(USD, sym1, sym1Ticker, close)
+sym1High   = quote(USD, sym1, sym1Ticker, high)
+sym1Low    = quote(USD, sym1, sym1Ticker, low)
+sym1Volume = quote(USD, sym1, sym1Ticker, volume)
+
+// BINANCE:BTCUSDT
+sym2Open   = quote(usdtUSD, sym2, sym2Ticker, open)
+sym2Close  = quote(usdtUSD, sym2, sym2Ticker, close)
+sym2High   = quote(usdtUSD, sym2, sym2Ticker, high)
+sym2Low    = quote(usdtUSD, sym2, sym2Ticker, low)
+sym2Volume = quote(usdtUSD, sym2, sym2Ticker, volume)
+
+// BITFLYER:BTCJPY
+sym3Open   = quote(jpyUSD, sym3, sym3Ticker, open)
+sym3Close  = quote(jpyUSD, sym3, sym3Ticker, close)
+sym3High   = quote(jpyUSD, sym3, sym3Ticker, high)
+sym3Low    = quote(jpyUSD, sym3, sym3Ticker, low)
+sym3Volume = quote(jpyUSD, sym3, sym3Ticker, volume)
+
+// BITHUMB:BTCKRW
+sym4Open   = quote(krwUSD, sym4, sym4Ticker, open)
+sym4Close  = quote(krwUSD, sym4, sym4Ticker, close)
+sym4High   = quote(krwUSD, sym4, sym4Ticker, high)
+sym4Low    = quote(krwUSD, sym4, sym4Ticker, low)
+sym4Volume = quote(krwUSD, sym4, sym4Ticker, volume)
+
+// COINBASE:BTCUSD
+sym5Open   = quote(USD, sym5, sym5Ticker, open)
+sym5Close  = quote(USD, sym5, sym5Ticker, close)
+sym5High   = quote(USD, sym5, sym5Ticker, high)
+sym5Low    = quote(USD, sym5, sym5Ticker, low)
+sym5Volume = quote(USD, sym5, sym5Ticker, volume)
+
+// KRAKEN:BTCEUR
+sym6Open   = quote(eurUSD, sym6, sym6Ticker, open)
+sym6Close  = quote(eurUSD, sym6, sym6Ticker, close)
+sym6High   = quote(eurUSD, sym6, sym6Ticker, high)
+sym6Low    = quote(eurUSD, sym6, sym6Ticker, low)
+sym6Volume = quote(eurUSD, sym6, sym6Ticker, volume)
+
+
+// _______________________
+// ________ CALC _________
+
+// VOLUME: TOTAL
+symVolume = sym0Volume + sym1Volume + sym2Volume + sym3Volume + sym4Volume + sym5Volume + sym6Volume
+
+// WEIGHTS (percentage of total volume). Sum of all weights = 1
+sym0Weight = sym0Volume / symVolume
+sym1Weight = sym1Volume / symVolume
+sym2Weight = sym2Volume / symVolume
+sym3Weight = sym3Volume / symVolume
+sym4Weight = sym4Volume / symVolume
+sym5Weight = sym5Volume / symVolume
+sym6Weight = sym6Volume / symVolume
+
+// PRICE: Open, Close, High, Low
+symOpen  = (sym0Open * sym0Weight) 
+         + (sym1Open * sym1Weight) 
+         + (sym2Open * sym2Weight) 
+         + (sym3Open * sym3Weight) 
+         + (sym4Open * sym4Weight)
+         + (sym5Open * sym5Weight)
+         + (sym6Open * sym6Weight)
+         
+symClose = (sym0Close * sym0Weight) 
+         + (sym1Close * sym1Weight) 
+         + (sym2Close * sym2Weight) 
+         + (sym3Close * sym3Weight) 
+         + (sym4Close * sym4Weight)
+         + (sym5Close * sym5Weight)
+         + (sym6Close * sym6Weight)
+
+symHigh  = (sym0High * sym0Weight) 
+         + (sym1High * sym1Weight) 
+         + (sym2High * sym2Weight) 
+         + (sym3High * sym3Weight) 
+         + (sym4High * sym4Weight)
+         + (sym5High * sym5Weight)
+         + (sym6High * sym6Weight)
+
+symLow   = (sym0Low * sym0Weight) 
+         + (sym1Low * sym1Weight) 
+         + (sym2Low * sym2Weight) 
+         + (sym3Low * sym3Weight) 
+         + (sym4Low * sym4Weight)
+         + (sym5Low * sym5Weight)
+         + (sym6Low * sym6Weight)
+
+// PRICE: (H+L)/2, (H+L+C)/3, (O+H+L+C)/4
+symHL2   = (symHigh + symLow) / 2
+symHLC3  = (symHigh + symLow  + symClose) / 3
+symOHLC4 = (symOpen + symHigh + symLow + symClose) / 4
+
+
+// _______________________
+// ________ DRAW _________
+
+// OHLC: these are hidden by default (maximum transparency). 
+// Provide a Price Source for other indicators (especially "Close").
+symChartOpen  = plot(series=symOpen,  title="Open",  style=linebr, color=#808080, transp=70, linewidth=1)
+symChartHigh  = plot(series=symHigh,  title="High",  style=linebr, color=#5EB986, transp=100, linewidth=1)
+symChartLow   = plot(series=symLow,   title="Low",   style=linebr, color=#EB4C5C, transp=100, linewidth=1)
+symChartClose = plot(series=symClose, title="Close", style=linebr, color=#C0C0C0, transp=70, linewidth=1)
+
+symChartHL2   = plot(series=symHL2,   title="(H + L)/2",         style=linebr, color=#0080FF, transp=100, linewidth=2)
+symChartHLC3  = plot(series=symHLC3,  title="(H + L + C )/3",    style=linebr, color=#0000FF, transp=100, linewidth=2)
+symChartOHLC4 = plot(series=symOHLC4, title="(O + H + L + C)/4", style=linebr, color=#8000FF, transp=100, linewidth=2)
+
+// CANDLES
+// Sadly, no border color parameter (black by default)
+symChartCandles = plotcandle(symOpen, symHigh, symLow, symClose, title="Candles", color=symClose >= symOpen ? #5EB986 : #EB4C5C, wickcolor=#808080)
