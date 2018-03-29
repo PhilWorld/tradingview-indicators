@@ -1,0 +1,274 @@
+//@version=3
+
+// BTC WORLD VOLUME
+//  Multi-Exchange Volume Aggregation
+//  Release: 2018-03-29
+//  Author: Phil Ledru
+//  Email: mail@phil.world
+//  GitHub: https://github.com/PhilWorld/tradingview-indicators
+
+// PURPOSE
+//  Quotes BTC volume over 17 exchanges, and returns sum.
+//  Includes USD, EUR, JPY, KRW and USDT sources.
+
+// FEATURES
+//  - Display a stacked representation, freely inspired from CoinMarketCap charts.
+//  - Alternatively, display a Volume Histogram (see Format > Style, edit transparency, uncheck all exchanges for clarity).
+//  - Display a Moving Average (SMA, EMA, DEMA or TEMA).
+//  - Background: lighter on price up, darker on price down.
+
+// NOTES
+//  - Grey: BitMEX, Green: USD, Yellow: Tether (USDT), Red: Asia (JPY, KRW), Blue: Europe (EUR).
+//  - Ignore individual values (each is the cumulative sum of others below, for graphical purposes).
+//  - The total volume is accurate (expressed in BTC units). When including BitMEX, expect to see ~80% of the volume reported on CoinMarketCap.
+//  - Format > Inputs lets you choose which exchanges are computed.
+//  - IMPORTANT: if you want to hide areas and display histogram only, uncheck exchanges in Format > Style.
+
+// EXCHANGES (Total: >38.38% of reported volume on CoinMarketCap, 2018-03-11)
+// See https://coinmarketcap.com/currencies/bitcoin/#markets
+// (also onchainfx.com, tools.newsbtc.com/top-100-coins, bravenewcoin.com)
+//  
+// Rank   Exchange    Vol%    TV TICKER         Start Date  Currency  Continent 
+//  01    Bitmex      (~50%)  BITMEX:XBTUSD     17/01/01    USD	      America
+//  02    Bitfinex    10.75%  BITFINEX:BTCUSD   13/03/31    USD	      America
+//  03    Binance     6.40%   BINANCE:BTCUSDT   17/08/17    USDT      Tether
+//  04    bitFlyer    3.55%   BITFLYER:BTCJPY   15/06/24    JPY	      Asia
+//  05    Bithumb     3.26%   BITHUMB:BTCKRW    13/12/27    KRW	      Asia
+//  06    Coinbase    3.00%   COINBASE:BTCUSD   14/12/01    USD	      America
+//  07    Bitstamp    2.84%   BITSTAMP:BTCUSD   11/08/18    USD	      America
+//  08    Kraken      2.09%   KRAKEN:XBTUSD     13/10/06    USD	      America
+//  09    Kraken      1.97%   KRAKEN:XBTEUR     13/09/10    EUR	      Europe
+//  10    HitBTC      0.87%   HITBTC:BTCUSD     13/12/27    USD	      America
+//  11    Bittrex     0.70%   BITTREX:BTCUSDT   15/12/12    USDT      Tether
+//  12    Bitfinex    0.60%   BITFINEX:BTCEUR   17/11/14    EUR	      Europe
+//  13    Poloniex    0.59%   POLONIEX:BTCUSDT  15/02/19    USDT      Tether
+//  14    Bitstamp    0.55%   BITSTAMP:BTCEUR   16/04/16    EUR	      Europe
+//  15    Coinbase    0.51%   COINBASE:BTCEUR   15/04/23    EUR	      Europe
+//  16    CEX.io      0.36%   CEXIO:BTCUSD      14/07/18    USD	      America
+//  17    Korbit      0.34%   KORBIT:BTCKRW     13/09/03    KRW	      Asia
+
+  
+//  INDICATOR PARAMETERS
+sTitle      = "BTC World Volume (Multi-Exchange)"
+sShort      = "BTC World Volume"
+sRelease    = "2018-03-29"
+sOverlay    = false
+sScale      = scale.right
+sPrecision  = 0
+
+study(title=sTitle+" [v"+sRelease+"]", shorttitle=sShort, overlay=sOverlay, scale=sScale, precision=sPrecision)
+
+
+
+// _______________________
+// ________ INPUTS _______
+
+// STATIC
+
+// Symbols are denominated "sym00, sym01... symN"
+// Exchange name, TradingView TickerID     (sorted by fiat/continent then volume) [*** > 1%]
+sym01Title = "Bitmex   (USD)"  , sym01Ticker = "BITMEX:XBTUSD"    // USD 1  (~50%) ***
+sym02Title = "Bitfinex (USD)"  , sym02Ticker = "BITFINEX:BTCUSD"  // USD 2  10.75% ***
+sym03Title = "Coinbase (USD)"  , sym03Ticker = "COINBASE:BTCUSD"  // USD 3   3.00% ***
+sym04Title = "Bitstamp (USD)"  , sym04Ticker = "BITSTAMP:BTCUSD"  // USD 4   2.84% ***
+sym05Title = "Kraken   (USD)"  , sym05Ticker = "KRAKEN:XBTUSD"    // USD 5   2.09% ***
+sym06Title = "HitBTC   (USD)"  , sym06Ticker = "HITBTC:BTCUSD"    // USD 6   0.87% 
+sym07Title = "CEX.io   (USD)"  , sym07Ticker = "CEXIO:BTCUSD"     // USD 7   0.36% 
+sym08Title = "Binance  (USDT)" , sym08Ticker = "BINANCE:BTCUSDT"  // USDT 1  6.40% ***
+sym09Title = "Bittrex  (USDT)" , sym09Ticker = "BITTREX:BTCUSDT"  // USDT 2  0.70% 
+sym10Title = "Poloniex (USDT)" , sym10Ticker = "POLONIEX:BTCUSDT" // USDT 3  0.59% 
+sym11Title = "bitFlyer (JPY)"  , sym11Ticker = "BITFLYER:BTCJPY"  // Asia 1  3.55% ***
+sym12Title = "Bithumb  (KRW)"  , sym12Ticker = "BITHUMB:BTCKRW"   // Asia 2  3.26% ***
+sym13Title = "Korbit   (KRW)"  , sym13Ticker = "KORBIT:BTCKRW"    // Asia 3  0.34% 
+sym14Title = "Kraken   (EUR)"  , sym14Ticker = "KRAKEN:XBTEUR"    // Euro 1  1.97% ***
+sym15Title = "Bitfinex (EUR)"  , sym15Ticker = "BITFINEX:BTCEUR"  // Euro 2  0.60% 
+sym16Title = "Bitstamp (EUR)"  , sym16Ticker = "BITSTAMP:BTCEUR"  // Euro 3  0.55% 
+sym17Title = "Coinbase (EUR)"  , sym17Ticker = "COINBASE:BTCEUR"  // Euro 4  0.51% 
+
+
+// OPTIONS
+
+// User-selection of which exchanges to compute (default: all)
+sym01 = input(title=sym01Title, type=bool, defval=true)
+sym02 = input(title=sym02Title, type=bool, defval=true)
+sym03 = input(title=sym03Title, type=bool, defval=true)
+sym04 = input(title=sym04Title, type=bool, defval=true)
+sym05 = input(title=sym05Title, type=bool, defval=true)
+sym06 = input(title=sym06Title, type=bool, defval=true)
+sym07 = input(title=sym07Title, type=bool, defval=true)
+sym08 = input(title=sym08Title, type=bool, defval=true)
+sym09 = input(title=sym09Title, type=bool, defval=true)
+sym10 = input(title=sym10Title, type=bool, defval=true)
+sym11 = input(title=sym11Title, type=bool, defval=true)
+sym12 = input(title=sym12Title, type=bool, defval=true)
+sym13 = input(title=sym13Title, type=bool, defval=true)
+sym14 = input(title=sym14Title, type=bool, defval=true)
+sym15 = input(title=sym15Title, type=bool, defval=true)
+sym16 = input(title=sym16Title, type=bool, defval=true)
+sym17 = input(title=sym17Title, type=bool, defval=true)
+
+// User-selection of Moving Average parameters
+maType = input(title="Moving Average Type", options=["Simple", "Exponential", "Double Exponential", "Triple Exponential"], defval="Simple")
+maLength = input(7, title="MA Period Length")
+
+
+
+// _______________________
+// ________ QUOTE ________
+
+// retrieve FOREX currency values in USD
+USD     = 1
+usdtUSD = security("USDTUSD", period, close)
+jpyUSD  = security("JPYUSD" , period, close)
+krwUSD  = security("KRWUSD" , period, close)
+eurUSD  = security("EURUSD" , period, close)
+
+// PRICE: close (we actually just need it to know price action up or down, to assign a background color)
+sym01Price = sym01 ? nz( security(sym01Ticker, period, close) * USD     ) : 0   // USD 1 
+sym02Price = sym02 ? nz( security(sym02Ticker, period, close) * USD     ) : 0   // USD 2 
+sym03Price = sym03 ? nz( security(sym03Ticker, period, close) * USD     ) : 0   // USD 3 
+sym04Price = sym04 ? nz( security(sym04Ticker, period, close) * USD     ) : 0   // USD 4 
+sym05Price = sym05 ? nz( security(sym05Ticker, period, close) * USD     ) : 0   // USD 5 
+sym06Price = sym06 ? nz( security(sym06Ticker, period, close) * USD     ) : 0   // USD 6 
+sym07Price = sym07 ? nz( security(sym07Ticker, period, close) * USD     ) : 0   // USD 7 
+sym08Price = sym08 ? nz( security(sym08Ticker, period, close) * usdtUSD ) : 0   // USDT 1
+sym09Price = sym09 ? nz( security(sym09Ticker, period, close) * usdtUSD ) : 0   // USDT 2
+sym10Price = sym10 ? nz( security(sym10Ticker, period, close) * usdtUSD ) : 0   // USDT 3
+sym11Price = sym11 ? nz( security(sym11Ticker, period, close) * jpyUSD  ) : 0   // Asia 1
+sym12Price = sym12 ? nz( security(sym12Ticker, period, close) * krwUSD  ) : 0   // Asia 2
+sym13Price = sym13 ? nz( security(sym13Ticker, period, close) * krwUSD  ) : 0   // Asia 3
+sym14Price = sym14 ? nz( security(sym14Ticker, period, close) * eurUSD  ) : 0   // Euro 1
+sym15Price = sym15 ? nz( security(sym15Ticker, period, close) * eurUSD  ) : 0   // Euro 2
+sym16Price = sym16 ? nz( security(sym16Ticker, period, close) * eurUSD  ) : 0   // Euro 3
+sym17Price = sym17 ? nz( security(sym17Ticker, period, close) * eurUSD  ) : 0   // Euro 4
+
+// VOLUME
+sym01VolUSD = sym01 ? nz( security(sym01Ticker, period, volume) ) : 0    // this is USD, converting to BTC below
+sym01Volume = sym01 ? nz( sym01VolUSD / sym01Price ) : 0 
+sym02Volume = sym02 ? nz( security(sym02Ticker, period, volume) ) : 0
+sym03Volume = sym03 ? nz( security(sym03Ticker, period, volume) ) : 0 
+sym04Volume = sym04 ? nz( security(sym04Ticker, period, volume) ) : 0
+sym05Volume = sym05 ? nz( security(sym05Ticker, period, volume) ) : 0
+sym06Volume = sym06 ? nz( security(sym06Ticker, period, volume) ) : 0
+sym07Volume = sym07 ? nz( security(sym07Ticker, period, volume) ) : 0
+sym08Volume = sym08 ? nz( security(sym08Ticker, period, volume) ) : 0
+sym09Volume = sym09 ? nz( security(sym09Ticker, period, volume) ) : 0
+sym10Volume = sym10 ? nz( security(sym10Ticker, period, volume) ) : 0
+sym11Volume = sym11 ? nz( security(sym11Ticker, period, volume) ) : 0
+sym12Volume = sym12 ? nz( security(sym12Ticker, period, volume) ) : 0
+sym13Volume = sym13 ? nz( security(sym13Ticker, period, volume) ) : 0
+sym14Volume = sym14 ? nz( security(sym14Ticker, period, volume) ) : 0
+sym15Volume = sym15 ? nz( security(sym15Ticker, period, volume) ) : 0
+sym16Volume = sym16 ? nz( security(sym16Ticker, period, volume) ) : 0
+sym17Volume = sym17 ? nz( security(sym17Ticker, period, volume) ) : 0
+
+// Total Price (useful to determine price action up or down)
+symPrice = sym01Price + sym02Price + sym03Price + sym04Price + sym05Price + sym06Price + sym07Price + sym08Price 
+         + sym09Price + sym10Price + sym11Price + sym12Price + sym13Price + sym14Price + sym15Price + sym16Price 
+         + sym17Price
+
+// Total volume
+symVolume = sym01Volume + sym02Volume + sym03Volume + sym04Volume + sym05Volume + sym06Volume + sym07Volume + sym08Volume 
+          + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume 
+          + sym17Volume
+
+
+
+// _______________________
+// ___ MOVING AVERAGES ___
+
+// Double EMA Function
+dema(src, len) => (2 * ema(src, len) - ema(ema(src, len), len))
+
+// Triple EMA Function
+tema(src, len) => (3 * ema(src, len) - 3 * (ema(ema(src, len), len)) + ema(ema(ema(src, len), len), len) )
+
+// Moving Average Calculation
+volumeMA = maType == "Exponential" ?        ema(symVolume, maLength) :
+           maType == "Double Exponential" ? dema(symVolume, maLength) :
+           maType == "Triple Exponential" ? tema(symVolume, maLength) :
+           sma(symVolume, maLength)
+
+
+
+// _______________________
+// ________ DRAW _________
+
+// COLORS
+
+// Price action up or down?
+priceUp = symPrice[0] > symPrice[1]
+
+// Volume histogram
+volumeColor = priceUp ? #FFFFFF : #000000
+
+// Price action Signs (triangles)
+signsColor = priceUp ? #5EB986 : #EB4C5C
+
+// Blue Grey
+blueGrey50 = #546E7A
+
+//  USD : green      Tether : yellow     Asia : red       Europe : blue
+green05 = #E8F5E9 , amber05 = #FFF8E1 , red05 = #FFEBEE , blue05 = #E3F2FD
+green10 = #C8E6C9 , amber10 = #FFECB3 , red10 = #FFCDD2 , blue10 = #BBDEFB
+green20 = #A5D6A7 , amber20 = #FFE082 , red20 = #EF9A9A , blue20 = #90CAF9
+green30 = #81C784 , amber30 = #FFD54F , red30 = #E57373 , blue30 = #64B5F6
+green40 = #66BB6A , amber40 = #FFCA28 , red40 = #EF5350 , blue40 = #42A5F5
+green50 = #4CAF50 , amber50 = #FFC107 , red50 = #F44336 , blue50 = #2196F3
+green60 = #43A047 , amber60 = #FFB300 , red60 = #E53935 , blue60 = #1E88E5
+green70 = #388E3C , amber70 = #FFA000 , red70 = #D32F2F , blue70 = #1976D2
+green80 = #2E7D32 , amber80 = #FF8F00 , red80 = #C62828 , blue80 = #1565C0
+green90 = #1B5E20 , amber90 = #FF6F00 , red90 = #B71C1C , blue90 = #0D47A1
+greenA1 = #B9F6CA , amberA1 = #FFE57F , redA1 = #FF8A80 , blueA1 = #82B1FF
+greenA2 = #69F0AE , amberA2 = #FFD740 , redA2 = #FF5252 , blueA2 = #448AFF
+greenA4 = #00E676 , amberA4 = #FFC400 , redA4 = #FF1744 , blueA4 = #2979FF
+greenA7 = #00C853 , amberA7 = #FFAB00 , redA7 = #D50000 , blueA7 = #2962FF
+
+
+
+// PLOT CHARTS
+
+// Stacked values (graphical purposes only, these values are meaningless)
+// sym01Graph = symVolume
+sym02Graph = sym02Volume + sym03Volume + sym04Volume + sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym03Graph = sym03Volume + sym04Volume + sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym04Graph = sym04Volume + sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym05Graph = sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym06Graph = sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym07Graph = sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym08Graph = sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym09Graph = sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym10Graph = sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym11Graph = sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym12Graph = sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym13Graph = sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym14Graph = sym14Volume + sym15Volume + sym16Volume + sym17Volume
+sym15Graph = sym15Volume + sym16Volume + sym17Volume
+sym16Graph = sym16Volume + sym17Volume
+sym17Graph = sym17Volume
+
+// Exchanges
+plot(series=symVolume,  title=sym01Title, style=areabr, transp=17, color=blueGrey50 )  // USD 1 (BitMEX)
+plot(series=sym02Graph, title=sym02Title, style=areabr, transp=17, color=green60 )     // USD 2 
+plot(series=sym03Graph, title=sym03Title, style=areabr, transp=17, color=green40 )     // USD 3 
+plot(series=sym04Graph, title=sym04Title, style=areabr, transp=17, color=green20 )     // USD 4 
+plot(series=sym05Graph, title=sym05Title, style=areabr, transp=17, color=greenA7 )     // USD 5 
+plot(series=sym06Graph, title=sym06Title, style=areabr, transp=17, color=greenA4 )     // USD 6 
+plot(series=sym07Graph, title=sym07Title, style=areabr, transp=17, color=green80 )     // USD 7 
+plot(series=sym08Graph, title=sym08Title, style=areabr, transp=17, color=amber80 )     // USDT 1
+plot(series=sym09Graph, title=sym09Title, style=areabr, transp=17, color=amber50 )     // USDT 2
+plot(series=sym10Graph, title=sym10Title, style=areabr, transp=17, color=amber30 )     // USDT 3
+plot(series=sym11Graph, title=sym11Title, style=areabr, transp=17, color=red80 )       // Asia 1
+plot(series=sym12Graph, title=sym12Title, style=areabr, transp=17, color=red50 )       // Asia 2
+plot(series=sym13Graph, title=sym13Title, style=areabr, transp=17, color=red20 )       // Asia 3
+plot(series=sym14Graph, title=sym14Title, style=areabr, transp=17, color=blue90 )      // Euro 1
+plot(series=sym15Graph, title=sym15Title, style=areabr, transp=17, color=blue70 )      // Euro 2
+plot(series=sym16Graph, title=sym16Title, style=areabr, transp=17, color=blue40 )      // Euro 3
+plot(series=sym17Graph, title=sym17Title, style=areabr, transp=17, color=blue20 )      // Euro 4
+
+// Total Volume (can be used as input for other indicators)
+plot(series=symVolume, title="Total Volume", style=histogram, linewidth=4, transp=100, color=gray)
+bgcolor(color=volumeColor, transp=90, title="Background")
+
+// Moving Average
+plot(series=volumeMA, title=maType+tostring(maLength),  style=linebr, linewidth=3, transp=0, color=#18FFFF)
