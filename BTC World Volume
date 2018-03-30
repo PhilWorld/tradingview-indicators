@@ -2,7 +2,7 @@
 
 // BTC WORLD VOLUME
 //  Multi-Exchange Volume Aggregation
-//  Release: 2018-03-29
+//  Release: 2018-03-30
 //  Author: Phil Ledru
 //  Email: mail@phil.world
 //  GitHub: https://github.com/PhilWorld/tradingview-indicators
@@ -51,7 +51,7 @@
 //  INDICATOR PARAMETERS
 sTitle      = "BTC World Volume (Multi-Exchange)"
 sShort      = "BTC World Volume"
-sRelease    = "2018-03-29"
+sRelease    = "2018-03-30"
 sOverlay    = false
 sScale      = scale.right
 sPrecision  = 0
@@ -66,7 +66,7 @@ study(title=sTitle+" [v"+sRelease+"]", shorttitle=sShort, overlay=sOverlay, scal
 // STATIC
 
 // Symbols are denominated "sym00, sym01... symN"
-// Exchange name, TradingView TickerID     (sorted by fiat/continent then volume) [*** > 1%]
+// Exchange name, TradingView TickerID (sorted by fiat/continent then volume)     [*** > 1%]
 sym01Title = "Bitmex   (USD)"  , sym01Ticker = "BITMEX:XBTUSD"    // USD 1  (~50%) ***
 sym02Title = "Bitfinex (USD)"  , sym02Ticker = "BITFINEX:BTCUSD"  // USD 2  10.75% ***
 sym03Title = "Coinbase (USD)"  , sym03Ticker = "COINBASE:BTCUSD"  // USD 3   3.00% ***
@@ -88,7 +88,7 @@ sym17Title = "Coinbase (EUR)"  , sym17Ticker = "COINBASE:BTCEUR"  // Euro 4  0.5
 
 // OPTIONS
 
-// User-selection of which exchanges to compute (default: all)
+// User selection of which exchanges to compute (default: all)
 sym01 = input(title=sym01Title, type=bool, defval=true)
 sym02 = input(title=sym02Title, type=bool, defval=true)
 sym03 = input(title=sym03Title, type=bool, defval=true)
@@ -107,14 +107,14 @@ sym15 = input(title=sym15Title, type=bool, defval=true)
 sym16 = input(title=sym16Title, type=bool, defval=true)
 sym17 = input(title=sym17Title, type=bool, defval=true)
 
-// User-selection of Moving Average parameters
+// User selection of Moving Average parameters
 maType = input(title="Moving Average Type", options=["Simple", "Exponential", "Double Exponential", "Triple Exponential"], defval="Simple")
 maLength = input(7, title="MA Period Length")
 
 
 
 // _______________________
-// ________ QUOTE ________
+// ________ QUOTES _______
 
 // retrieve FOREX currency values in USD
 USD     = 1
@@ -162,7 +162,7 @@ sym15Volume = sym15 ? nz( security(sym15Ticker, period, volume) ) : 0
 sym16Volume = sym16 ? nz( security(sym16Ticker, period, volume) ) : 0
 sym17Volume = sym17 ? nz( security(sym17Ticker, period, volume) ) : 0
 
-// Total Price (useful to determine price action up or down)
+// Total Price (to determine price action up or down)
 symPrice = sym01Price + sym02Price + sym03Price + sym04Price + sym05Price + sym06Price + sym07Price + sym08Price 
          + sym09Price + sym10Price + sym11Price + sym12Price + sym13Price + sym14Price + sym15Price + sym16Price 
          + sym17Price
@@ -194,61 +194,59 @@ volumeMA = maType == "Exponential" ?        ema(symVolume, maLength) :
 // _______________________
 // ________ DRAW _________
 
+
 // COLORS
 
-// Price action up or down?
-priceUp = symPrice[0] > symPrice[1]
+// Background color
+isPriceUp = symPrice[0] > symPrice[1]
+volumeColor = isPriceUp ? #FFFFFF : #000000
 
-// Volume histogram
-volumeColor = priceUp ? #FFFFFF : #000000
-
-// Price action Signs (triangles)
-signsColor = priceUp ? #5EB986 : #EB4C5C
-
-// Blue Grey
+// BitMEX: grey
 blueGrey50 = #546E7A
-
-//  USD : green      Tether : yellow     Asia : red       Europe : blue
-green05 = #E8F5E9 , amber05 = #FFF8E1 , red05 = #FFEBEE , blue05 = #E3F2FD
-green10 = #C8E6C9 , amber10 = #FFECB3 , red10 = #FFCDD2 , blue10 = #BBDEFB
-green20 = #A5D6A7 , amber20 = #FFE082 , red20 = #EF9A9A , blue20 = #90CAF9
-green30 = #81C784 , amber30 = #FFD54F , red30 = #E57373 , blue30 = #64B5F6
-green40 = #66BB6A , amber40 = #FFCA28 , red40 = #EF5350 , blue40 = #42A5F5
-green50 = #4CAF50 , amber50 = #FFC107 , red50 = #F44336 , blue50 = #2196F3
-green60 = #43A047 , amber60 = #FFB300 , red60 = #E53935 , blue60 = #1E88E5
-green70 = #388E3C , amber70 = #FFA000 , red70 = #D32F2F , blue70 = #1976D2
-green80 = #2E7D32 , amber80 = #FF8F00 , red80 = #C62828 , blue80 = #1565C0
-green90 = #1B5E20 , amber90 = #FF6F00 , red90 = #B71C1C , blue90 = #0D47A1
-greenA1 = #B9F6CA , amberA1 = #FFE57F , redA1 = #FF8A80 , blueA1 = #82B1FF
-greenA2 = #69F0AE , amberA2 = #FFD740 , redA2 = #FF5252 , blueA2 = #448AFF
-greenA4 = #00E676 , amberA4 = #FFC400 , redA4 = #FF1744 , blueA4 = #2979FF
-greenA7 = #00C853 , amberA7 = #FFAB00 , redA7 = #D50000 , blueA7 = #2962FF
-
+// USD: green
+green20 = #A5D6A7
+green40 = #66BB6A
+green60 = #43A047
+green80 = #2E7D32
+greenA4 = #00E676
+greenA7 = #00C853
+// Tether: yellow
+amber30 = #FFD54F
+amber50 = #FFC107
+amber80 = #FF8F00
+// Asia: red
+red20 = #EF9A9A
+red50 = #F44336
+red80 = #C62828
+// Europe: blue
+blue20 = #90CAF9
+blue40 = #42A5F5
+blue70 = #1976D2
+blue90 = #0D47A1
 
 
 // PLOT CHARTS
 
 // Stacked values (graphical purposes only, these values are meaningless)
-// sym01Graph = symVolume
-sym02Graph = sym02Volume + sym03Volume + sym04Volume + sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym03Graph = sym03Volume + sym04Volume + sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym04Graph = sym04Volume + sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym05Graph = sym05Volume + sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym06Graph = sym06Volume + sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym07Graph = sym07Volume + sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym08Graph = sym08Volume + sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym09Graph = sym09Volume + sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym10Graph = sym10Volume + sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym11Graph = sym11Volume + sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym12Graph = sym12Volume + sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym13Graph = sym13Volume + sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym14Graph = sym14Volume + sym15Volume + sym16Volume + sym17Volume
-sym15Graph = sym15Volume + sym16Volume + sym17Volume
-sym16Graph = sym16Volume + sym17Volume
 sym17Graph = sym17Volume
+sym16Graph = sym16Volume + sym17Graph
+sym15Graph = sym15Volume + sym16Graph
+sym14Graph = sym14Volume + sym15Graph
+sym13Graph = sym13Volume + sym14Graph
+sym12Graph = sym12Volume + sym13Graph
+sym11Graph = sym11Volume + sym12Graph
+sym10Graph = sym10Volume + sym11Graph
+sym09Graph = sym09Volume + sym10Graph
+sym08Graph = sym08Volume + sym09Graph
+sym07Graph = sym07Volume + sym08Graph
+sym06Graph = sym06Volume + sym07Graph
+sym05Graph = sym05Volume + sym06Graph
+sym04Graph = sym04Volume + sym05Graph
+sym03Graph = sym03Volume + sym04Graph
+sym02Graph = sym02Volume + sym03Graph
 
 // Exchanges
-plot(series=symVolume,  title=sym01Title, style=areabr, transp=17, color=blueGrey50 )  // USD 1 (BitMEX)
+plot(series=symVolume, title=sym01Title, style=areabr, transp=17, color=blueGrey50 )   // USD 1 (BitMEX)
 plot(series=sym02Graph, title=sym02Title, style=areabr, transp=17, color=green60 )     // USD 2 
 plot(series=sym03Graph, title=sym03Title, style=areabr, transp=17, color=green40 )     // USD 3 
 plot(series=sym04Graph, title=sym04Title, style=areabr, transp=17, color=green20 )     // USD 4 
@@ -267,7 +265,7 @@ plot(series=sym16Graph, title=sym16Title, style=areabr, transp=17, color=blue40 
 plot(series=sym17Graph, title=sym17Title, style=areabr, transp=17, color=blue20 )      // Euro 4
 
 // Total Volume (can be used as input for other indicators)
-plot(series=symVolume, title="Total Volume", style=histogram, linewidth=4, transp=100, color=gray)
+plot(series=symVolume, title="Volume Histogram",  style=histogram, linewidth=2, transp=100, color=gray)
 bgcolor(color=volumeColor, transp=90, title="Background")
 
 // Moving Average
