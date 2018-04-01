@@ -198,8 +198,8 @@ volumeMA = maType == "Exponential" ?        ema(symVolume, maLength) :
 // COLORS
 
 // Background color
-isPriceUp = symPrice[0] > symPrice[1]
-volumeColor = isPriceUp ? #FFFFFF : #000000
+isPriceDown = symPrice[1] > symPrice[0]
+volumeColor = isPriceDown ? #000000 : #FFFFFF
 
 // BitMEX: grey
 blueGrey50 = #546E7A
@@ -246,27 +246,29 @@ sym03Graph = sym03Volume + sym04Graph
 sym02Graph = sym02Volume + sym03Graph
 
 // Exchanges
-plot(series=symVolume, title=sym01Title, style=areabr, transp=17, color=blueGrey50 )   // USD 1 (BitMEX)
-plot(series=sym02Graph, title=sym02Title, style=areabr, transp=17, color=green60 )     // USD 2 
-plot(series=sym03Graph, title=sym03Title, style=areabr, transp=17, color=green40 )     // USD 3 
-plot(series=sym04Graph, title=sym04Title, style=areabr, transp=17, color=green20 )     // USD 4 
-plot(series=sym05Graph, title=sym05Title, style=areabr, transp=17, color=greenA7 )     // USD 5 
-plot(series=sym06Graph, title=sym06Title, style=areabr, transp=17, color=greenA4 )     // USD 6 
-plot(series=sym07Graph, title=sym07Title, style=areabr, transp=17, color=green80 )     // USD 7 
-plot(series=sym08Graph, title=sym08Title, style=areabr, transp=17, color=amber80 )     // USDT 1
-plot(series=sym09Graph, title=sym09Title, style=areabr, transp=17, color=amber50 )     // USDT 2
-plot(series=sym10Graph, title=sym10Title, style=areabr, transp=17, color=amber30 )     // USDT 3
-plot(series=sym11Graph, title=sym11Title, style=areabr, transp=17, color=red80 )       // Asia 1
-plot(series=sym12Graph, title=sym12Title, style=areabr, transp=17, color=red50 )       // Asia 2
-plot(series=sym13Graph, title=sym13Title, style=areabr, transp=17, color=red20 )       // Asia 3
-plot(series=sym14Graph, title=sym14Title, style=areabr, transp=17, color=blue90 )      // Euro 1
-plot(series=sym15Graph, title=sym15Title, style=areabr, transp=17, color=blue70 )      // Euro 2
-plot(series=sym16Graph, title=sym16Title, style=areabr, transp=17, color=blue40 )      // Euro 3
-plot(series=sym17Graph, title=sym17Title, style=areabr, transp=17, color=blue20 )      // Euro 4
+plot(series=symVolume,  title=sym01Title, style=areabr, transp=17, color=blueGrey50 )  // USD 1 (BitMEX)
+plot(series=sym02Graph, title=sym02Title, style=areabr, transp=0,  color=green60 )     // USD 2 
+plot(series=sym03Graph, title=sym03Title, style=areabr, transp=0,  color=green40 )     // USD 3 
+plot(series=sym04Graph, title=sym04Title, style=areabr, transp=0,  color=green20 )     // USD 4 
+plot(series=sym05Graph, title=sym05Title, style=areabr, transp=0,  color=greenA7 )     // USD 5 
+plot(series=sym06Graph, title=sym06Title, style=areabr, transp=0,  color=greenA4 )     // USD 6 
+plot(series=sym07Graph, title=sym07Title, style=areabr, transp=0,  color=green80 )     // USD 7 
+plot(series=sym08Graph, title=sym08Title, style=areabr, transp=0,  color=amber80 )     // USDT 1
+plot(series=sym09Graph, title=sym09Title, style=areabr, transp=0,  color=amber50 )     // USDT 2
+plot(series=sym10Graph, title=sym10Title, style=areabr, transp=0,  color=amber30 )     // USDT 3
+plot(series=sym11Graph, title=sym11Title, style=areabr, transp=0,  color=red80 )       // Asia 1
+plot(series=sym12Graph, title=sym12Title, style=areabr, transp=0,  color=red50 )       // Asia 2
+plot(series=sym13Graph, title=sym13Title, style=areabr, transp=0,  color=red20 )       // Asia 3
+plot(series=sym14Graph, title=sym14Title, style=areabr, transp=0,  color=blue90 )      // Euro 1
+plot(series=sym15Graph, title=sym15Title, style=areabr, transp=0,  color=blue70 )      // Euro 2
+plot(series=sym16Graph, title=sym16Title, style=areabr, transp=0,  color=blue40 )      // Euro 3
+plot(series=sym17Graph, title=sym17Title, style=areabr, transp=0,  color=blue20 )      // Euro 4
+
+// Background: Display price up or down
+bgcolor(color=volumeColor, transp=90, title="Background: Price Down (Color 0) or Up (Color 1)")
 
 // Total Volume (can be used as input for other indicators)
-plot(series=symVolume, title="Volume Histogram",  style=histogram, linewidth=2, transp=100, color=gray)
-bgcolor(color=volumeColor, transp=90, title="Background")
+plot(series=symVolume, title="Total Volume", style=histogram, linewidth=4, transp=100, color=gray)
 
 // Moving Average
-plot(series=volumeMA, title=maType+tostring(maLength),  style=linebr, linewidth=3, transp=0, color=#18FFFF)
+plot(series=volumeMA, title="Moving Average",  style=linebr, linewidth=3, transp=0, color=#18FFFF)
